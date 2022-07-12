@@ -1,0 +1,601 @@
+---
+title: "ADA442 - Project Report"
+author: "Umay Şamlı-Baran Akın-Serdar Hoşver"
+date: '`r format(Sys.time())`'
+output:
+  word_document:
+    toc: yes
+  pdf_document:
+    number_sections: yes
+    toc: yes
+  html_document:
+    toc: yes
+    df_print: paged
+subtitle: "Classification, Comparison of logistic regression and decision tree"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("rmarkdown")
+library(rmarkdown)
+#install.packages("tinytex")
+library(tinytex)
+#tinytex::install_tinytex()
+options(knitr.duplicate.label = "allow")
+```
+# Abstract
+  The overall goal of this research is to compare two distinct models in a classification challenge. These models are multinomial and classification tree. The study's design is broken down into six areas. In the first section, I discussed the approaches needed to create a model. In the second section, I briefly discussed the dataset that was utilized in this study. The dataset's comprehensive information is then provided. Finally, model fitting and performance evaluation are the final two processes.
+
+# Introduction
+  The model types used in this research are logistic regression and classification tree. Because our response value is a qualitative variable, these two model types are selected. The dataset's comprehensive details will be provided later. 
+  In addition, Linear Discriminant Analysis, Quadratic Discriminant Analysis, and Naive Bayes are also choices for classification issues in the literature. We studied how to design Logistic Regression and Classification Tree in class, therefore I tried to include these techniques into my project. 
+  Some of our estimates would be outside the [0,1] interval if we employed Linear Regression, making them difficult to interpret as probabilities.
+  Furthermore, the probabilities in the linear regression graph may have negative values, but this is not possible. 
+The curve for probabilities in the Logistic Regression Model has form on the [0,1] interval.
+
+# Methodology
+
+The chosen models are Logistic Regression and Classification Tree, as previously stated. 
+The first step is to split the data into two sections: Implementing the 75-25 rule in training and testing 
+The test data is used to evaluate performance metrics while the training data is utilized to train the model. 
+The link between the categorical answer value (target) and one or more predictors is the focus of this research. The logistic regression model and classification tree are acceptable to create because we are working with categorical responses. First, I fit the model with all predictors in logistic regression. I excluded the non-significant factors based on the results.
+Then I built a model with major variables and looked at how performance measures differed. 
+In the classification tree, I start by creating a model with all predictors and observing the model's accuracy rate. 
+I pruned a tree in the second stage of the classification tree and compared it to the first model in terms of selected predictors and accuracy rate.
+
+# Data Description 
+
+A passenger satisfaction survey is included in this dataset. What elements are strongly associated with a satisfied, neutral or dissatisfied passenger? Is it possible to forecast how satisfied passengers will be?
+
+```{r}
+# The data is downloaded from Kaggle. The link of the data is given below:
+# https://www.kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction?resource=download
+
+# Import the train data.
+train.data <- read.csv("/Users/serdarhsvr/Desktop/DATA/train.csv", stringsAsFactors=FALSE)
+
+# Import the test data.
+test.data <- read.csv("/Users/serdarhsvr/Desktop/DATA/test.csv", stringsAsFactors=FALSE)
+```
+
+We found the dataset from the Kaggle. The link of the dataset is given below: https://www.kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction?resource=download
+
+Satisfaction: Airline satisfaction level(Satisfaction, neutral or dissatisfaction)
+
+Age: The actual age of the passengers
+
+Gender: Gender of the passengers (Female, Male)
+
+Type of Travel: Purpose of the flight of the passengers (Personal Travel, Business Travel)
+
+Class: Travel class in the plane of the passengers (Business, Eco, Eco Plus)"
+
+Customer Type: The customer type (Loyal customer, disloyal customer)
+
+Flight distance: The flight distance of this journey
+
+Inflight wifi service: Satisfaction level of the inflight wifi service (0:Not Applicable;1-5)
+
+Ease of Online booking: Satisfaction level of online booking
+
+Inflight service: Satisfaction level of inflight service
+
+Online boarding: Satisfaction level of online boarding
+
+Inflight entertainment: Satisfaction level of inflight entertainment
+
+Food and drink: Satisfaction level of Food and drink
+
+Seat comfort: Satisfaction level of Seat comfort
+
+On-board service: Satisfaction level of On-board service
+
+Leg room service: Satisfaction level of Leg room service
+
+Departure/Arrival time convenient: Satisfaction level of Departure/Arrival time convenient
+
+Baggage handling: Satisfaction level of baggage handling
+
+Gate location: Satisfaction level of Gate location
+
+Cleanliness: Satisfaction level of Cleanliness
+
+Check-in service: Satisfaction level of Check-in service
+
+Departure Delay in Minutes: Minutes delayed when departure
+
+Arrival Delay in Minutes: Minutes delayed when Arrival
+
+Flight cancelled: Whether the Flight cancelled or not (Yes, No)
+
+Flight time in minutes: Minutes of Flight takes
+
+The content of the variables' explanations is taken from the Kaggle.
+
+# Explaratory Data Analysis (EDA) and Pre-Processing
+
+When we briefly look at the analysis part of the data, we encounter the distribution of some results.The ratio of the genders seem almost equal. Most of the customers were loyal (%81). Most of the customers were traveling for business. Eco and Business class were mostly chosen by the customers. The satisfaction level of seat comfort was equal. (This means some of the customers were happy but some just hated the seats). More than half of the customers were not satisfied. But still the satisfaction of the customers were almost half to half.
+
+```{r descriptives}
+#install.packages("jmv")
+library(jmv)   # Load the jmv package for frequency table
+descriptives(train.data, vars = vars(Gender, Customer.Type, Age, Type.of.Travel, Class, Seat.comfort, satisfaction), freq = TRUE)  # Use the descritptives function to get the descritptive data
+```
+
+To reproduce a particular sequence of random numbers, we chose 123 as value for the function set.seed(). Then, we converted all the quantitative variables which has type of character to integer values as 0 and 1. Moreover, we found that there were some NA values. To handle that values, we replaced NA Values in both training dataset and test dataset. There were 310 NA value and 83 NA value in the both dataset' Arrival.Delay.in.Minutes variable. Also in order to further operations, we converted satisfaction variable to "Yes" or "No" as factor.
+
+```{r preprocess}
+# To reproduce a particular sequence of 'random' numbers
+set.seed(123)
+
+# Converting the Gender variable to 0 and 1 in both Train and Test data set.
+train.data$Gender <- as.character(train.data$Gender) 
+train.data$Gender[train.data$Gender == "Female"] <- 0   # Replace "Female" by 0
+train.data$Gender[train.data$Gender == "Male"] <- 1     # Replace "Male" by 1
+train.data$Gender <- as.numeric(train.data$Gender)
+test.data$Gender <- as.character(test.data$Gender) 
+test.data$Gender[test.data$Gender == "Female"] <- 0     # Replace "Female" by 0
+test.data$Gender[test.data$Gender == "Male"] <- 1       # Replace "Male" by 1
+test.data$Gender <- as.numeric(test.data$Gender)
+
+
+# Converting the Customer.Type variable to 0 and 1 in both Train and Test data set.
+train.data$Customer.Type <- as.character(train.data$Customer.Type) 
+train.data$Customer.Type[train.data$Customer.Type == "disloyal Customer"] <- 0   # Replace "disloyal Customer" by 0
+train.data$Customer.Type[train.data$Customer.Type == "Loyal Customer"] <- 1      # Replace "Loyal Customer" by 1
+train.data$Customer.Type <- as.numeric(train.data$Customer.Type)
+test.data$Customer.Type <- as.character(test.data$Customer.Type) 
+test.data$Customer.Type[test.data$Customer.Type == "disloyal Customer"] <- 0     # Replace "disloyal Customer" by 0
+test.data$Customer.Type[test.data$Customer.Type == "Loyal Customer"] <- 1        # Replace "Loyal Customer" by 1
+test.data$Customer.Type <- as.numeric(test.data$Customer.Type)
+
+
+# Converting the Type.of.Travel variable to 0 and 1 in both Train and Test data set.
+train.data$Type.of.Travel <- as.character(train.data$Type.of.Travel) 
+train.data$Type.of.Travel[train.data$Type.of.Travel == "Personal Travel"] <- 0   # Replace "Personal Travel" by 0
+train.data$Type.of.Travel[train.data$Type.of.Travel == "Business travel"] <- 1   # Replace "Business travel" by 1
+train.data$Type.of.Travel <- as.numeric(train.data$Type.of.Travel)
+test.data$Type.of.Travel <- as.character(test.data$Type.of.Travel) 
+test.data$Type.of.Travel[test.data$Type.of.Travel == "Personal Travel"] <- 0     # Replace "Personal Travel" by 0
+test.data$Type.of.Travel[test.data$Type.of.Travel == "Business travel"] <- 1     # Replace "Business travel" by 1
+test.data$Type.of.Travel <- as.numeric(test.data$Type.of.Travel)
+
+
+# Converting the Class variable to 0 and 1 in both Train and Test data set.
+train.data$Class <- as.character(train.data$Class) 
+train.data$Class[train.data$Class == "Eco"] <- 1          # Replace "Eco" by 1
+train.data$Class[train.data$Class == "Eco Plus"] <- 2     # Replace "Eco Plus" by 2
+train.data$Class[train.data$Class == "Business"] <- 3     # Replace "Business" by 3
+train.data$Class <- as.numeric(train.data$Class)
+test.data$Class <- as.character(test.data$Class) 
+test.data$Class[test.data$Class == "Eco"] <- 1            # Replace "Eco" by 1
+test.data$Class[test.data$Class == "Eco Plus"] <- 2       # Replace "Eco Plus" by 2
+test.data$Class[test.data$Class == "Business"] <- 3       # Replace "Business" by 3
+test.data$Class <- as.numeric(test.data$Class)
+
+
+# Converting the satisfaction variable to 0 and 1 in both Train and Test data set.
+train.data$satisfaction <- as.character(train.data$satisfaction) 
+train.data$satisfaction[train.data$satisfaction == "neutral or dissatisfied"] <- 0  # Replace "neutral or dissatisfied" by 0
+train.data$satisfaction[train.data$satisfaction == "satisfied"] <- 1                # Replace "satisfied" by 1
+train.data$satisfaction <- as.numeric(train.data$satisfaction)
+test.data$satisfaction <- as.character(test.data$satisfaction) 
+test.data$satisfaction[test.data$satisfaction == "neutral or dissatisfied"] <- 0    # Replace "neutral or dissatisfied" by 0
+test.data$satisfaction[test.data$satisfaction == "satisfied"] <- 1                  # Replace "satisfied" by 1
+test.data$satisfaction <- as.numeric(test.data$satisfaction)
+
+# We have some NA values to deal with in Train data set.
+sum(is.na(train.data))                             # There are 310 NA values
+sum(is.na(train.data$Arrival.Delay.in.Minutes))    # Which is just in Arrival.Delay.in.Minutes
+
+# We have some NA values to deal with in Test data set.
+sum(is.na(test.data))                             # There are 83 NA values
+sum(is.na(test.data$Arrival.Delay.in.Minutes))    # Which is just in Arrival.Delay.in.Minutes 
+
+# Replacing NA Values in Training Data - Arrival Delay in Minutes
+NA.position <- which(is.na(train.data$Arrival.Delay.in.Minutes))
+train.data$Arrival.Delay.in.Minutes[NA.position] = mean(train.data$Arrival.Delay.in.Minutes, na.rm = TRUE)
+#Replacing NA Values in Testing Data - Arrival Delay in Minutes
+NA.position1 <- which(is.na(test.data$Arrival.Delay.in.Minutes))
+test.data$Arrival.Delay.in.Minutes[NA.position1] = mean(test.data$Arrival.Delay.in.Minutes, na.rm = TRUE)
+
+# To make satisfaction variable as factor.
+test.data$satisfaction <- factor(ifelse(test.data$satisfaction == 1, "Yes", "No"))
+train.data$satisfaction <- factor(ifelse(train.data$satisfaction == 1, "Yes", "No"))
+
+
+```
+
+# Model Fit and Numerical Results
+
+## The model is based on Logistic Regression.
+
+### The model is based on logistic regresion based on all variables.
+```{r modeling based on logistic regresion based on all variables}
+
+# Fitting the model for the data with trying all the values.
+firstModel <- glm(satisfaction ~ .-id-X, data = train.data,family = "binomial")
+summary(firstModel)
+
+# Finding all the values that we think make sense.
+predict = predict(firstModel, type = 'response' , newdata=train.data)
+
+# Checking the prediction probabilities using the summary() function
+summary(predict)
+
+
+tapply(predict, train.data$satisfaction, mean)
+
+#install.packages("predict")
+library(ROCR)
+ROCRpred <- prediction(predict, train.data$satisfaction)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, print.cutoffs.at=seq(0,1,by=0.1),text.adj = c(-0.2,1.7))
+table(train.data$satisfaction, predict > 0.7)
+
+#Calculating Accuracy
+Accuracy_avg_Logit = (56754 + 33329) / (56754 + 33329 + 2125 + 11696)
+Accuracy_avg_Logit
+
+#Calculating Sensitivity or Recall value
+Recall = 33329 / (33329 + 11696)
+Recall
+
+#Calculating Precision Value
+Precision = 33329 / (33329 + 2125)
+Precision
+
+#Calculating F-Measure
+F.measure = (2*Recall*Precision)/(Recall+Precision)
+F.measure
+
+#Calculating Specificity
+Specificity = 56754 / (56754 + 2125)
+Specificity
+
+```
+### The model is based on logistic regressison based on spesific variables.
+```{r modeling based on logistic regressison based on spesific variables}
+# Fit your model for the data
+# First trying all the values.
+# Creating another model with the variables that we think it make sense
+secondModel <- glm(satisfaction ~ Type.of.Travel + Departure.Arrival.time.convenient + Cleanliness + Customer.Type, data = train.data,family = "binomial")
+
+# Finding all the vaiues that we think make sense
+predict = predict(secondModel, type = 'response' , newdata=train.data)
+
+# Checking the predicion probablities using the summary Function
+summary(predict)
+
+
+tapply(predict, train.data$satisfaction, mean)
+
+ROCRpred <- prediction(predict, train.data$satisfaction)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, print.cutoffs.at=seq(0,1,by=0.1),text.adj = c(-0.2,1.7))
+table(train.data$satisfaction, predict > 0.7)
+
+#Calculating Accuracy
+Accuracy_avg_Logit = (55705 + 25076) / (55705 + 25076 + 3174 + 19949)
+Accuracy_avg_Logit
+
+#Calculating Sensitivity or Recall value
+Recall = 25076 / (25076 + 19949)
+Recall
+
+#Calculating Precision Value
+Precision = 25076 / (25076 + 3174)
+Precision
+
+#Calculating F-Measure
+F.measure = (2*Recall*Precision)/(Recall+Precision)
+F.measure
+
+#Calculating Specificity
+Specificity = 55705 / (55705 + 3174)
+Specificity
+
+
+```
+
+## The model is based Classifaction Tree.
+
+### The model is based on R.Tree().
+
+We built our classification tree model based on train dataset by using R.Tree() function. The used variables for tree construction are: Online.boarding, Inflight.wifi.service, Class, Inflight.entertainment, Customer.Type and Type.of.Travel. The classification tree model based on train dataset with all variables, except for satisfaction, X, and id. Satisfaction is our response variable and remain two is is not important. They are just a used for sorting. This is the unpruned tre which has 12 terminal nodes, residual mean deviance is 0.485, and misclassification error rate is 0.101. Then we examine the plot of tree of the train data. When we calculate our model's performance we can see that it is %89.86. In order to increase its performance we have to use cross validation. We have to check deviance with respect to size. We chose minimum value of deviance which is 10581 and this is joint with size value of 11. This can be seen in graphs as well. The value of 11 has minimum deviance.
+
+```{r modeling R.Tree()}
+#install.packages("tree")
+library(tree)
+
+# Build the classification tree model based on train dataset with all variables, except for satisfaction, X, and id. 
+tree.train.data <- tree(satisfaction ~ . -satisfaction + X + id, train.data)
+summary(tree.train.data)
+
+# The plot of tree.train.data.
+plot(tree.train.data)
+text(tree.train.data, pretty = 0)
+
+# Then we made some predict by using that model with using test dataset.
+tree.pred <- predict(tree.train.data , test.data , type = "class")
+table(tree.pred, test.data$satisfaction)
+
+# This is the model accuracy of classification tree on the test data.
+mean(tree.pred == test.data$satisfaction)
+
+# To decide prune level we use cv.tree() function.
+cv.train.data <- cv.tree(tree.train.data , FUN = prune.misclass)
+names(cv.train.data)
+cv.train.data
+
+# CV error results 
+par(mfrow = c(1, 2))
+
+# We plot cv.
+plot(cv.train.data$size , cv.train.data$dev, type = "b")
+plot(cv.train.data$k, cv.train.data$dev, type = "b")
+plot(cv.train.data$k, cv.train.data$size, type = "b")
+
+prune.misclass
+
+prune.train.data <- prune.misclass(tree.train.data , best = 12)
+plot(prune.train.data)
+text(prune.train.data , pretty = 0)
+summary(prune.train.data)
+
+```
+
+### The model is based on R.Rpart().
+
+```{r modeling based on R.Part()}
+
+library(rpart)
+#install.packages("ROCR")
+library(rpart.plot)
+library(caret)
+library(nnet)
+tree = rpart(satisfaction ~ Gender + Customer.Type + Age + 
+               Type.of.Travel + Class + Flight.Distance + Inflight.wifi.service + 
+               Departure.Arrival.time.convenient + Ease.of.Online.booking + 
+               Gate.location + Food.and.drink + Online.boarding + Seat.comfort +
+               Inflight.entertainment + On.board.service + Leg.room.service +
+               Baggage.handling + Checkin.service + Inflight.service +
+               Cleanliness + Departure.Delay.in.Minutes + Arrival.Delay.in.Minutes , 
+             data = train.data, method = 'class', minbucket=25)
+
+varImp(tree)
+
+#Re-running the model with significant variables
+tree1 = rpart(satisfaction ~  Age + Type.of.Travel + Class + Inflight.wifi.service + 
+                Ease.of.Online.booking + Online.boarding +
+                Inflight.entertainment + On.board.service + Leg.room.service +
+                Arrival.Delay.in.Minutes,data = train.data, 
+              method = 'class', minbucket=25)
+
+#Summary of the model
+summary(tree1)
+
+#Visualizaing the Decision tree
+prp(tree1)
+
+# Define cross-validation experiment
+numFolds = trainControl( method = "cv", number = 8)
+cpGrid = expand.grid( .cp = seq(0.01,0.5,0.01))
+
+train(as.factor(satisfaction) ~  Age + Type.of.Travel + Class + Inflight.wifi.service + 
+        Ease.of.Online.booking + Online.boarding +
+        Inflight.entertainment + On.board.service + Leg.room.service +
+        Arrival.Delay.in.Minutes,data = train.data, method = "rpart", trControl = numFolds, tuneGrid = cpGrid )
+
+tree2 = rpart(as.factor(satisfaction) ~  Age + Type.of.Travel + Class + Inflight.wifi.service + 
+                Ease.of.Online.booking + Online.boarding +
+                Inflight.entertainment + On.board.service + Leg.room.service +
+                Arrival.Delay.in.Minutes,data = train.data, method="class", cp = 0.02)
+
+PredictROC = predict(tree1, newdata = test.data)
+head(PredictROC)
+library(ROCR)
+#Plotting the ROC Curve
+pred = prediction(PredictROC[,2], test.data$satisfaction)
+perf = performance(pred, "tpr", "fpr")
+plot(perf, colorize = TRUE, print.cutoffs.at=seq(0,1,by=0.1),text.adj = c(-0.2,1.7))
+
+```
+##Testing for Logistic Regresion.
+
+###Testing for logistic regresion based on all variables.
+```{r testing for all variables}
+# Testing the performance of the fitted model
+##Test for Logistic Regresion Model 1
+#Finding all the vaiues that we think make sense
+predict = predict(firstModel, type = 'response' , newdata=test.data)
+
+#Checking the predicion probablities using the summary Function
+summary(predict)
+
+
+tapply(predict, test.data$satisfaction, mean)
+
+ROCRpred <- prediction(predict, test.data$satisfaction)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, print.cutoffs.at=seq(0,1,by=0.1),text.adj = c(-0.2,1.7))
+table(test.data$satisfaction, predict > 0.7)
+
+#Calculating Accuracy
+Accuracy_avg_Logit = (14009   + 8422) / (14009 + 8422 + 564 + 2981)
+Accuracy_avg_Logit
+
+#Calculating Sensitivity or Recall value
+Recall = 8422 / (8422 + 3174)
+Recall
+
+#Calculating Precision Value
+Precision = 8422 / (8422 + 771)
+Precision
+
+#Calculating F-Measure
+F.measure = (2*Recall*Precision)/(Recall+Precision)
+F.measure
+
+#Calculating Specificity
+Specificity = 14009  / (14009  + 771)
+Specificity
+
+#Testing Data AUC-ROC(Area Under the Curve - Receiver operator Characteristics) value
+AUC1 = as.numeric(performance(ROCRpred, "auc")@y.values)
+AUC1
+```
+###Testing for logistic regresion based on spesific variables.
+```{r testing for spesific variables}
+
+##Testing for Logistic Regresion Model 2 
+#Finding all the vaiues that we think make sense
+predict = predict(secondModel, type = 'response' , newdata=test.data)
+
+#Checking the predicion probablities using the summary Function
+summary(predict)
+
+
+tapply(predict, test.data$satisfaction, mean)
+
+ROCRpred <- prediction(predict, test.data$satisfaction)
+ROCRperf <- performance(ROCRpred, 'tpr','fpr')
+plot(ROCRperf, colorize = TRUE, print.cutoffs.at=seq(0,1,by=0.1),text.adj = c(-0.2,1.7))
+table(test.data$satisfaction, predict > 0.7)
+
+#Calculating Accuracy
+Accuracy_avg_Logit = (13802  + 6382) / (13802  + 6382 + 5021 + 771)
+Accuracy_avg_Logit
+
+#Calculating Sensitivity or Recall value
+Recall = 6382 / (6382 + 5021)
+Recall
+
+#Calculating Precision Value
+Precision = 6382 / (6382 + 771)
+Precision
+
+#Calculating F-Measure
+F.measure = (2*Recall*Precision)/(Recall+Precision)
+F.measure
+
+#Calculating Specificity
+Specificity = 13802  / (13802  + 771)
+Specificity
+
+#Testing Data AUC-ROC(Area Under the Curve - Receiver operator Characteristics) value
+AUC2 = as.numeric(performance(ROCRpred, "auc")@y.values)
+AUC2
+
+```
+### Testing for Classifaction Tree based on R.Tree().
+
+The pruned tree which has 11 terminal nodes, residual mean deviance is 0.485, and misclassification error rate is 0.101. Then we examine the plot of tree of the train data. When we calculate our model's performance we can see that it is again %89.86.We cannot upgrade our models performance by using prune. It is already the best model in terms of its terminal nodes.
+```{r testing for R.Tree()}
+# This the prune train data.
+prune.train.data <- prune.misclass(tree.train.data , best = 12)
+plot(prune.train.data)
+text(prune.train.data , pretty = 0)
+summary(prune.train.data)
+
+tree.pred_pruned <- predict(prune.train.data, test.data, type = "class")
+table(tree.pred_pruned , test.data$satisfaction)
+
+# This is the model accuracy of classification tree on the test data.
+mean(tree.pred_pruned == test.data$satisfaction)
+
+# The pruned model with 11 teminal nodes. 
+prune.train.data <- prune.misclass(tree.train.data , best = 11)
+plot(prune.train.data)
+text(prune.train.data , pretty = 0)
+
+tree.pred <- predict(prune.train.data, test.data, type = "class")
+table(tree.pred , test.data$satisfaction)
+
+# Compute model accuracy rate on test data
+mean(tree.pred == test.data$satisfaction)
+
+#Testing Data AUC-ROC(Area Under the Curve - Receiver operator Characteristics) value
+AUC3 = as.numeric(performance(ROCRpred, "auc")@y.values)
+AUC3
+
+```
+
+### Testing for Classifaction Tree based on R.Rpart(). 
+```{r testing for R.Part()}
+#Confusion Matrix table to find accuracy
+#From the ROC Curve, we found 0.7 is the optimum threshold value for Cut-off.
+table(test.data$satisfaction, PredictROC[,2] > 0.65)
+
+#Calculating Accuracy
+Accuracy_avg_Tree = (13044+9586)/(13044+9586+1529+1817)
+Accuracy_avg_Tree
+
+#Calculating Sensitivity or Recall value
+Recall = (9586)/(9586+1817)
+Recall
+
+#Calculating Precision Value
+Precision = (9586)/(9586+1529)
+Precision
+
+#Calculating F-Measure
+F.measure = (2*Recall*Precision)/(Recall+Precision)
+F.measure
+
+#Calculating Specificity
+Specificity = (14003)/(14003+570)
+Specificity
+
+#Testing Data AUC-ROC(Area Under the Curve - Receiver operator Characteristics) value
+AUC4 = as.numeric(performance(pred, "auc")@y.values)
+AUC4
+```
+Final comparison if you are using more than one model !
+
+## Final comparison for Logistic Regression. 
+
+```{r comparison for Logistic Regression}
+# This is the logistic regresion based on all variables performance
+AUC1
+
+# This is the logistic regresion based on spesific variables performance
+AUC2
+
+```
+logistic regresion based on all variables performance heigher than logistic regresion based on spesific variables performance
+
+## Final comparison for Classifaction Tree. 
+```{r comparison for Classifaction Tree}
+# This is the R.Tree performance
+AUC3
+
+# This is the R.Part performance
+AUC4
+```
+R.Part is more perfomance than R.Tree
+
+
+# Conclusions 
+
+We did two different models for desicon tree and logistic regeresion.
+
+We tested them with the train and test data's. At the end we found that the results that we found with the train and test datas were close. Thats why we satisfied about our data's reliability.
+
+Than we testd our our data's reliabilities with AUC. Acording to the AUC vairables of the models. The most accured model's were:
+1- Logistic regresion with all variables calculated.
+2- First desicon tree.
+3- Second desicon tree.
+4- Logistic tree that we spesificaly chosed meaninfull variable.
+
+Now, Based on the comparison between the 2 models of logistic regression and Decision Tree, we could conclude that Logitic regression performed better when compared with Decision Tree on a slightly higher Note. And on compaison with accuracy and Specificity, logitsic regression had a slightly upper hand than Decision Tree. Where the Area under the Curve (AUC) value was found to be almost similar for both the cases.
+
+Thus the Airline customer satisfaction analysis depends on the various factors and satisfaction across each individual category is analyzed to determine the overall satisfaction of the airline passengers. Analysis of data using the logistic regression proved to perform better when compared to Decision tree and results accuracy also proved to quite high.
+
+# References 
+
+- https://owl.purdue.edu/owl/research_and_citation/apa_style/apa_formatting_and_style_guide/in_text_citations_the_basics.html
+-https://www.kaggle.com/datasets/teejmahal20/airline-passenger-satisfaction?resource=download
+
+
+
