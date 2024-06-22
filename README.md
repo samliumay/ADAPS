@@ -1,4 +1,4 @@
-# Algorithm-to-determine-Airline-Passenger-Satisfaction
+# Algorithm to Determine Airline Passenger Satisfaction
 - We tried to determine the Airline Passenger Satisfaction acording to data that we had. 
 
 - All Team members of the project were :
