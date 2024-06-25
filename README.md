@@ -1,5 +1,5 @@
 # Algorithm to Determine Airline Passenger Satisfaction
-## Report and Analysis of which AI/ML ALgorithms has the best prediction cabailites for passanger satisfaction analysis. 
+## a.	Report and Analysis of which AI/ML Algorithms has the best prediction capabilities for passenger satisfaction analysis.
 - We tried to determine the Airline Passenger Satisfaction acording to data that we had. 
 
 - All Team members of the project were :
